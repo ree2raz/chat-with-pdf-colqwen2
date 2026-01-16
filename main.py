@@ -44,6 +44,22 @@ PDF_ROOT = Path("/vol/pdfs/")
 
 cache_volume = modal.Volume.from_name("hf-hub-cache", create_if_missing=True)
 
+
+def get_chatbot_message_with_image(user_message, image):
+    return [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image", "image": image},
+                {"type": "text", "text": user_message},
+            ],
+        }
+    ]
+
+
+def append_to_messages(message, session, user_type="user"):
+    session.messages.append({"role": user_type, "content": message})
+
 @app.function(
     image=model_image, volumes={CACHE_DIR: cache_volume}, timeout=20 * MINUTES
 )
@@ -66,6 +82,11 @@ def download_model():
 class Model:
     @modal.enter()
     def load_models(self):
+        import torch
+        from colpali_engine.models import ColQwen2, ColQwen2Processor
+        from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+        from qwen_vl_utils import process_vision_info
+
         self.colqwen2_model = ColQwen2.from_pretrained(
             "vidore/colqwen2-v0.1",
             torch_dtype=torch.bfloat16,
@@ -174,6 +195,7 @@ class Model:
 
     # Pass the query and retrieved image along with conversation history into the VLM for a response
     def generate_response(self, message, session, image):
+        from qwen_vl_utils import process_vision_info
         chatbot_message = get_chatbot_message_with_image(message, image)
         query = self.qwen2_vl_processor.apply_chat_template(
             [*session.messages, chatbot_message],
