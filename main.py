@@ -75,7 +75,7 @@ def download_model():
 
 @app.cls(
     image=model_image,
-    gpu="A10",
+    gpu="A100-80GB",
     scaledown_window=10 * MINUTES,  # spin down when inactive
     volumes={"/vol/pdfs/": pdf_volume, CACHE_DIR: cache_volume},
 )
@@ -202,6 +202,9 @@ class Model:
             tokenize=False,
             add_generation_prompt=True,
         )
+        # apply_chat_template returns a list when tokenize=False, extract the string
+        if isinstance(query, list):
+            query = query[0]
         image_inputs, _ = process_vision_info([chatbot_message])
         inputs = self.qwen2_vl_processor(
             text=[query],
